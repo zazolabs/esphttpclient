@@ -80,6 +80,32 @@ static void ICACHE_FLASH_ATTR receive_callback(void * arg, char * buf, unsigned 
 	os_free(req->buffer);
 	req->buffer = new_buffer;
 	req->buffer_size = new_size;
+        char *cp = os_strstr(req->buffer,"Content-Length: ");
+        if (cp) {
+                cp += strlen("Content-Lenght: ");
+                if (cp > (req->buffer + req->buffer_size)) {
+                        return;
+                }
+                int clen = atoi(cp);
+                if (clen > 0) {
+                       cp = os_strstr(req->buffer,"\r\n\r\n");
+                        if (cp) {
+                                cp += 4;
+                                if (cp < (req->buffer + req->buffer_size)) {
+                                        int hl = os_strlen(cp);
+                                        if (hl >= clen) {
+                                                if (req->secure) {
+                                                        espconn_secure_disconnect(conn);
+                                                } else {
+                                                        espconn_disconnect(conn);
+                                                }
+                                                os_printf("done\n");
+                                                req->done = 1;
+                                        }
+                                }
+                        }
+                }
+	}
 }
 
 static void ICACHE_FLASH_ATTR sent_callback(void * arg)
